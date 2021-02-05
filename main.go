@@ -24,11 +24,12 @@ func main() {
 	h.Handle("/echo-accept-header-w-vary", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("vary", "accept")
 		w.Header().Add("cache-control", "public, max-age=120, immutable")
+		w.Header().Add("access-control-allow-origin", r.Header.Get("origin"))
 		echoAcceptHeader(w, r)
 	}))
 	// Serve the test JS program.
 	h.Handle(jsFile, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("cache-control", "public, max-age=120, must-revalidate")
+		w.Header().Add("cache-control", "no-cache")
 		w.Header().Add("content-type", "application/javascript")
 		http.ServeFile(w, r, "."+jsFile)
 	}))
@@ -60,7 +61,8 @@ func echoAcceptHeader(w http.ResponseWriter, r *http.Request) {
 // accept header.
 func echoAcceptHeaderHTML(w http.ResponseWriter, r *http.Request) {
 	accept := r.Header.Get("accept")
-	html := fmt.Sprintf("<html><script src=\"%s\"></script><body><code>%s</code></body></html>", jsFile, accept)
+	w.Header().Set("content-type", "text/html")
+	html := fmt.Sprintf("<html><link rel=\"icon\" href=\"data:,\"><script src=\"%s\"></script><body><code>%s</code></body></html>", jsFile, accept)
 	fmt.Fprintf(w, html)
 }
 
@@ -68,5 +70,6 @@ func echoAcceptHeaderHTML(w http.ResponseWriter, r *http.Request) {
 // request's accept header.
 func echoAcceptHeaderJSON(w http.ResponseWriter, r *http.Request) {
 	accept := r.Header.Get("accept")
+	w.Header().Set("content-type", "application/json")
 	fmt.Fprintf(w, "{\"accept\": \""+accept+"\"}")
 }
