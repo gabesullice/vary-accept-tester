@@ -4,6 +4,8 @@ import "fmt"
 import "net/http"
 import "strings"
 
+var jsFile = "/fetcher.js"
+
 func main() {
 	h := http.NewServeMux()
 	// Echo the accept header without adding a `vary: accept` response header.
@@ -24,6 +26,12 @@ func main() {
 		w.Header().Add("cache-control", "public, max-age=120, immutable")
 		echoAcceptHeader(w, r)
 	}))
+	// Serve the test JS program.
+	h.Handle(jsFile, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("cache-control", "public, max-age=120, must-revalidate")
+		w.Header().Add("content-type", "application/javascript")
+		http.ServeFile(w, r, "."+jsFile)
+	}))
 	http.ListenAndServe(":8880", h)
 }
 
@@ -36,6 +44,8 @@ func echoAcceptHeader(w http.ResponseWriter, r *http.Request) {
 	case "text/html":
 		echoAcceptHeaderHTML(w, r)
 	case "application/json":
+		echoAcceptHeaderJSON(w, r)
+	case "application/hal+json":
 		echoAcceptHeaderJSON(w, r)
 	default:
 		w.WriteHeader(http.StatusNotAcceptable)
@@ -50,8 +60,7 @@ func echoAcceptHeader(w http.ResponseWriter, r *http.Request) {
 // accept header.
 func echoAcceptHeaderHTML(w http.ResponseWriter, r *http.Request) {
 	accept := r.Header.Get("accept")
-	fetch := "fetch(window.location.href, {headers: {accept: \"application/json\"}}).then(r => r.json()).then(console.log)"
-	html := "<html><script>" + fetch + "</script><body>" + accept + "</body></html>"
+	html := fmt.Sprintf("<html><script src=\"%s\"></script><body><code>%s</code></body></html>", jsFile, accept)
 	fmt.Fprintf(w, html)
 }
 
